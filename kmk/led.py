@@ -1,4 +1,4 @@
-import pulseio
+import pwmio
 import time
 from math import e, exp, pi, sin
 from micropython import const
@@ -28,7 +28,7 @@ class led:
     user_animation = None
 
     def __init__(self, led_pin, config):
-        self.led = pulseio.PWMOut(led_pin)
+        self.led = pwmio.PWMOut(led_pin)
         self.brightness_step = const(config['brightness_step'])
         self.brightness_limit = const(config['brightness_limit'])
         self.animation_mode = const(config['animation_mode'])
