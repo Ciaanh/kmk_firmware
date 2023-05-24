@@ -94,5 +94,19 @@ keyboard.keymap = [
 
 
 
+# uart = BLEUART_Config()
+# uart.tx=board.GP0,
+# uart.rx=board.GP1,
+# uart.gpio0=board.GP9,
+# uart.chip_select=board.GP13,
+# uart.busy=board.GP14,
+# uart.reset=board.GP15,
+# if __name__ == '__main__':
+#     keyboard.go(
+#         hid_type=HIDModes.BLE,
+#         ble_name='Antikythera',
+#         uart_config=uart
+#     )
+
 if __name__ == '__main__':
     keyboard.go()

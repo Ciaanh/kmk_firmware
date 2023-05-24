@@ -22,12 +22,10 @@ KeyBufferFrame = namedtuple(
     'KeyBufferFrame', ('key', 'is_pressed', 'int_coord', 'index')
 )
 
-
 class Sandbox:
     matrix_update = None
     secondary_matrix_update = None
     active_layers = None
-
 
 class KMKKeyboard:
     #####

@@ -1,3 +1,5 @@
+import board
+
 import supervisor
 import usb_hid
 from micropython import const
@@ -8,12 +10,21 @@ from kmk.keys import FIRST_KMK_INTERNAL_KEY, ConsumerKey, ModifierKey
 
 try:
     from adafruit_ble import BLERadio
+    from adafruit_ble.advertising import Advertisement
     from adafruit_ble.advertising.standard import ProvideServicesAdvertisement
     from adafruit_ble.services.standard.hid import HIDService
+    from adafruit_airlift.esp32 import ESP32
 except ImportError:
     # BLE not supported on this platform
     pass
 
+class BLEUART_Config:
+    reset = None
+    gpio0 = None
+    busy = None
+    chip_select = None
+    tx = None
+    rx = None
 
 class HIDModes:
     NOOP = 0  # currently unused; for testing?
@@ -246,12 +257,44 @@ class BLEHID(AbstractHID):
     # Hardcoded in CPy
     MAX_CONNECTIONS = const(2)
 
-    def __init__(self, ble_name=str(getmount('/').label), **kwargs):
+    def __init__(self, ble_name=str(getmount('/').label),uart_config:BLEUART_Config=None, **kwargs):
         self.ble_name = ble_name
+        self.uart_config = uart_config
         super().__init__()
 
     def post_init(self):
-        self.ble = BLERadio()
+        if self.uart_config is None:        
+            self.ble = BLERadio()
+        else:
+            esp32 = ESP32(
+                reset=self.uart_config.reset,
+                gpio0=self.uart_config.gpio0,
+                busy=self.uart_config.busy,
+                chip_select=self.uart_config.chip_select,
+                tx=self.uart_config.tx,
+                rx=self.uart_config.rx,
+            )
+
+            adapter = esp32.start_bluetooth()
+            self.ble = BLERadio(adapter)
+            # ble = BLERadio(adapter)
+            # uart = UARTService()
+            # advertisement = ProvideServicesAdvertisement(uart)
+
+            # while True:
+            #     ble.start_advertising(advertisement)
+            #     print("waiting to connect")
+            #     while not ble.connected:
+            #         pass
+            #     print("connected: trying to read input")
+            #     while ble.connected:
+            #         # Returns b'' if nothing was read.
+            #         one_byte = uart.read(1)
+            #         if one_byte:
+            #             print(one_byte)
+            #             uart.write(one_byte)
+
+
         self.ble.name = self.ble_name
         self.hid = HIDService()
         self.hid.protocol_mode = 0  # Boot protocol
@@ -298,7 +341,9 @@ class BLEHID(AbstractHID):
         return result
 
     def hid_send(self, evt):
+        print("hid_send")
         if not self.ble.connected:
+            print("not self.ble.connected")
             return
 
         # int, can be looked up in HIDReportTypes
@@ -314,15 +359,27 @@ class BLEHID(AbstractHID):
 
     def clear_bonds(self):
         import _bleio
-
+        print("clear_bonds")
         _bleio.adapter.erase_bonding()
 
     def start_advertising(self):
+        print("start_advertising")
         if not self.ble.advertising:
             advertisement = ProvideServicesAdvertisement(self.hid)
             advertisement.appearance = self.BLE_APPEARANCE_HID_KEYBOARD
 
-            self.ble.start_advertising(advertisement)
+            scan_response = Advertisement()
+            scan_response.complete_name = self.ble_name
+
+            if not self.ble.connected:
+                print("advertising")
+                self.ble.start_advertising(advertisement, scan_response)
+            else:
+                print("already connected")
+                print(self.ble.connections)
+        else:
+            print("already advertising")
 
     def stop_advertising(self):
+        print("stop_advertising")
         self.ble.stop_advertising()
